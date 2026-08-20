@@ -7,22 +7,30 @@
     <script type="module" src="/src/main.ts" defer></script>
   </head>
   <body>
-    <main class="container">
-      <h1>Mac Control Center</h1>
-      <div><strong>CPU:</strong> <span id="cpu">—</span></div>
-      <div><strong>Memory:</strong> <span id="mem">—</span></div>
-      <h2>Top processes</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>PID</th>
-            <th>Name</th>
-            <th>CPU</th>
-            <th>Mem</th>
-          </tr>
-        </thead>
-        <tbody id="proc-body"></tbody>
-      </table>
-    </main>
+    <div class="panel">
+      <header class="head"><h1>Mac Control Center</h1></header>
+      <section class="stats">
+        <div class="stat">
+          <span class="k">CPU</span><span class="v" id="cpu">—</span>
+        </div>
+        <div class="stat">
+          <span class="k">Memory</span><span class="v" id="mem">—</span>
+        </div>
+      </section>
+      <section class="procs">
+        <div class="procs-title">Top processes</div>
+        <table>
+          <thead>
+            <tr>
+              <th>PID</th>
+              <th>Name</th>
+              <th>CPU</th>
+              <th>Mem</th>
+            </tr>
+          </thead>
+          <tbody id="proc-body"></tbody>
+        </table>
+      </section>
+    </div>
   </body>
 </html>

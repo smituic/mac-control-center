@@ -55,18 +55,18 @@ fn get_processes(state: tauri::State<'_, Mutex<System>>) -> Vec<ProcInfo> {
     list
 }
 
-fn show_panel_top_right(window: &tauri::WebviewWindow) {
+fn show_panel(window: &tauri::WebviewWindow) {
     if let Ok(Some(monitor)) = window.primary_monitor() {
         let mpos = monitor.position();
         let msize = monitor.size();
         let scale = monitor.scale_factor();
-        if let Ok(wsize) = window.outer_size() {
-            let margin = (8.0 * scale) as i32;
-            let menubar = (28.0 * scale) as i32;
-            let x = mpos.x + msize.width as i32 - wsize.width as i32 - margin;
-            let y = mpos.y + menubar;
-            let _ = window.set_position(tauri::PhysicalPosition { x, y });
-        }
+        let menubar = (28.0 * scale) as i32;
+        let width = (380.0 * scale) as u32;
+        let height = (msize.height as i32 - menubar).max(0) as u32;
+        let x = mpos.x + msize.width as i32 - width as i32;
+        let y = mpos.y + menubar;
+        let _ = window.set_size(tauri::PhysicalSize { width, height });
+        let _ = window.set_position(tauri::PhysicalPosition { x, y });
     }
     let _ = window.show();
     let _ = window.set_focus();
@@ -101,7 +101,7 @@ pub fn run() {
                             if window.is_visible().unwrap_or(false) {
                                 let _ = window.hide();
                             } else {
-                                show_panel_top_right(&window);
+                                show_panel(&window);
                             }
                         }
                     }
