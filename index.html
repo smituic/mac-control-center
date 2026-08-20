@@ -7,30 +7,68 @@
     <script type="module" src="/src/main.ts" defer></script>
   </head>
   <body>
-    <div class="panel">
-      <header class="head"><h1>Mac Control Center</h1></header>
-      <section class="stats">
-        <div class="stat">
-          <span class="k">CPU</span><span class="v" id="cpu">—</span>
-        </div>
-        <div class="stat">
-          <span class="k">Memory</span><span class="v" id="mem">—</span>
-        </div>
-      </section>
-      <section class="procs">
-        <div class="procs-title">Top processes</div>
-        <table>
-          <thead>
-            <tr>
-              <th>PID</th>
-              <th>Name</th>
-              <th>CPU</th>
-              <th>Mem</th>
-            </tr>
-          </thead>
-          <tbody id="proc-body"></tbody>
-        </table>
-      </section>
+    <div class="app">
+      <nav class="rail">
+        <button class="rail-btn active" data-view="system" title="System">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+          </svg>
+        </button>
+        <button class="rail-btn" data-view="spotify" title="Spotify">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M9 18V5l12-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="18" cy="16" r="3" />
+          </svg>
+        </button>
+      </nav>
+
+      <main class="content">
+        <section class="view active" id="view-system">
+          <header class="head"><h1>System</h1></header>
+          <section class="stats">
+            <div class="stat">
+              <span class="k">CPU</span><span class="v" id="cpu">—</span>
+            </div>
+            <div class="stat">
+              <span class="k">Memory</span><span class="v" id="mem">—</span>
+            </div>
+          </section>
+          <section class="procs">
+            <div class="procs-title">Top processes</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>PID</th>
+                  <th>Name</th>
+                  <th>CPU</th>
+                  <th>Mem</th>
+                </tr>
+              </thead>
+              <tbody id="proc-body"></tbody>
+            </table>
+          </section>
+        </section>
+
+        <section class="view" id="view-spotify">
+          <header class="head"><h1>Spotify</h1></header>
+          <div class="placeholder">Coming next.</div>
+        </section>
+      </main>
     </div>
   </body>
 </html>

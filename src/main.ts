@@ -17,6 +17,19 @@ const mb = (b: number) => (b / 1024 / 1024).toFixed(0);
 const esc = (s: string) =>
   s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!);
 
+function setView(name: string) {
+  document.querySelectorAll<HTMLElement>(".view").forEach((v) => {
+    v.classList.toggle("active", v.id === `view-${name}`);
+  });
+  document.querySelectorAll<HTMLElement>(".rail-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.view === name);
+  });
+}
+
+document.querySelectorAll<HTMLElement>(".rail-btn").forEach((btn) => {
+  btn.addEventListener("click", () => setView(btn.dataset.view!));
+});
+
 async function refresh() {
   try {
     const s = await invoke<Stats>("get_stats");

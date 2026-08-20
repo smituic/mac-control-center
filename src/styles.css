@@ -17,18 +17,69 @@ body {
   -webkit-user-select: none;
   user-select: none;
 }
-.panel {
+
+.app {
   height: 100%;
   display: flex;
+}
+
+.rail {
+  width: 56px;
+  flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.25);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
   flex-direction: column;
-  padding: 22px 18px;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 0;
+}
+.rail-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #8a8a90;
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.rail-btn svg {
+  width: 20px;
+  height: 20px;
+}
+.rail-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #cfcfd4;
+}
+.rail-btn.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.content {
+  flex: 1;
   overflow-y: auto;
 }
+.view {
+  display: none;
+  padding: 22px 18px;
+}
+.view.active {
+  display: block;
+}
+
 .head h1 {
   font-size: 17px;
   font-weight: 600;
   letter-spacing: 0.2px;
 }
+
 .stats {
   margin: 18px 0;
   display: flex;
@@ -54,6 +105,7 @@ body {
   font-size: 15px;
   font-weight: 500;
 }
+
 .procs-title {
   color: #9a9a9f;
   font-size: 11px;
@@ -93,6 +145,13 @@ td:nth-child(4) {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+.placeholder {
+  color: #8a8a90;
+  font-size: 14px;
+  margin-top: 24px;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
 }
