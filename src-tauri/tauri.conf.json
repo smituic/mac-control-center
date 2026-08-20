@@ -13,9 +13,15 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "mac-control-center",
-        "width": 800,
-        "height": 600
+        "label": "main",
+        "title": "Mac Control Center",
+        "width": 360,
+        "height": 600,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "visible": false,
+        "skipTaskbar": true,
+        "resizable": false
       }
     ],
     "security": {
