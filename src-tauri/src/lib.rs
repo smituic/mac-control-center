@@ -50,7 +50,7 @@ fn get_processes(state: tauri::State<'_, Mutex<System>>) -> Vec<ProcInfo> {
             mem: p.memory(),
         })
         .collect();
-    list.sort_by(|a, b| b.cpu.partial_cmp(&a.cpu).unwrap_or(std::cmp::Ordering::Equal));
+        list.sort_by(|a, b| b.mem.cmp(&a.mem));
     list.truncate(15);
     list
 }
@@ -153,12 +153,21 @@ fn spotify_control(action: String) {
 }
 
 
+#[tauri::command]
+fn kill_process(state: tauri::State<'_, Mutex<System>>, pid: u32) -> bool {
+    let sys = state.lock().unwrap();
+    if let Some(proc) = sys.process(sysinfo::Pid::from_u32(pid)) {
+        proc.kill()
+    } else {
+        false
+    }
+}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(Mutex::new(System::new_all()))
-        .invoke_handler(tauri::generate_handler![greet, get_stats, get_processes, spotify_status, spotify_control, spotify_seek])
+        .invoke_handler(tauri::generate_handler![greet, get_stats, get_processes, spotify_status, spotify_control, spotify_seek, kill_process])
         .setup(|app| {
             use tauri::Manager;
             use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};

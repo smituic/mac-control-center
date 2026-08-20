@@ -226,3 +226,29 @@ input[type="range"]#sp-seekbar {
   height: 52px;
   font-size: 18px;
 }
+th:last-child,
+td:last-child {
+  text-align: center;
+  width: 28px;
+}
+.kill {
+  border: none;
+  background: transparent;
+  color: #6a6a70;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 6px;
+}
+.kill:hover {
+  background: rgba(255, 80, 80, 0.18);
+  color: #ff6b6b;
+}
+.kill.armed {
+  background: rgba(255, 80, 80, 0.22);
+  color: #ff6b6b;
+  width: auto;
+  padding: 3px 7px;
+  font-size: 10px;
+}

@@ -57,7 +57,13 @@ async function refreshSystem() {
   $("proc-body").innerHTML = procs
     .map(
       (p) =>
-        `<tr><td>${p.pid}</td><td>${esc(p.name)}</td><td>${p.cpu.toFixed(1)}%</td><td>${mb(p.mem)} MB</td></tr>`,
+        `<tr>
+       <td>${p.pid}</td>
+       <td>${esc(p.name)}</td>
+       <td>${p.cpu.toFixed(1)}%</td>
+       <td>${mb(p.mem)} MB</td>
+       <td><button class="kill" data-pid="${p.pid}" data-name="${esc(p.name)}" title="Quit process">✕</button></td>
+     </tr>`,
     )
     .join("");
 }
@@ -121,6 +127,35 @@ seekbar.addEventListener("change", () => {
   });
 });
 
+let armedPid: number | null = null;
+let armTimer: number | undefined;
+
+$("proc-body").addEventListener("click", async (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".kill");
+  if (!btn) return;
+  const pid = Number(btn.dataset.pid);
+
+  if (armedPid !== pid) {
+    // First click: arm this button
+    armedPid = pid;
+    btn.classList.add("armed");
+    btn.textContent = "kill?";
+    clearTimeout(armTimer);
+    armTimer = window.setTimeout(() => {
+      armedPid = null;
+    }, 2000);
+    return;
+  }
+
+  // Second click on the same row: do it
+  clearTimeout(armTimer);
+  armedPid = null;
+  const ok = await invoke<boolean>("kill_process", { pid });
+  if (!ok) {
+    btn.textContent = "denied";
+  }
+});
+
 async function tick() {
   try {
     await refreshSystem();
@@ -129,5 +164,6 @@ async function tick() {
     console.error(e);
   }
 }
+
 tick();
 setInterval(tick, 1000);
