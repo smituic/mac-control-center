@@ -73,12 +73,69 @@ fn show_panel(window: &tauri::WebviewWindow) {
 }
 
 
+fn run_osascript(script: &str) -> String {
+    std::process::Command::new("osascript")
+        .arg("-e")
+        .arg(script)
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default()
+}
+
+#[derive(serde::Serialize)]
+struct Spotify {
+    running: bool,
+    playing: bool,
+    track: String,
+    artist: String,
+}
+
+#[tauri::command]
+fn spotify_status() -> Spotify {
+    let script = r#"
+if application "Spotify" is running then
+    tell application "Spotify"
+        set st to player state as string
+        set tn to name of current track
+        set ar to artist of current track
+    end tell
+    return st & "|" & tn & "|" & ar
+else
+    return "notrunning"
+end if
+"#;
+    let out = run_osascript(script);
+    if out.is_empty() || out == "notrunning" {
+        return Spotify { running: false, playing: false, track: String::new(), artist: String::new() };
+    }
+    let parts: Vec<&str> = out.splitn(3, '|').collect();
+    Spotify {
+        running: true,
+        playing: parts.get(0).copied().unwrap_or("") == "playing",
+        track: parts.get(1).copied().unwrap_or("").to_string(),
+        artist: parts.get(2).copied().unwrap_or("").to_string(),
+    }
+}
+
+#[tauri::command]
+fn spotify_control(action: String) {
+    let cmd = match action.as_str() {
+        "playpause" => "playpause",
+        "next" => "next track",
+        "prev" => "previous track",
+        _ => return,
+    };
+    let script = format!("if application \"Spotify\" is running then tell application \"Spotify\" to {cmd}");
+    run_osascript(&script);
+}
+
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(Mutex::new(System::new_all()))
-        .invoke_handler(tauri::generate_handler![greet, get_stats, get_processes])
+                .invoke_handler(tauri::generate_handler![greet, get_stats, get_processes, spotify_status, spotify_control])
         .setup(|app| {
             use tauri::Manager;
             use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
