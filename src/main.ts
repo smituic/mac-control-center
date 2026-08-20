@@ -49,23 +49,44 @@ document
     btn.addEventListener("click", () => setView(btn.dataset.view!)),
   );
 
+function refreshSystem2(procs: Proc[]) {
+  const body = $("proc-body") as HTMLTableSectionElement;
+  const seen = new Set<string>();
+
+  for (const p of procs) {
+    const id = String(p.pid);
+    seen.add(id);
+    let row = body.querySelector<HTMLTableRowElement>(`tr[data-pid="${id}"]`);
+
+    if (!row) {
+      // New process: build the row once
+      row = document.createElement("tr");
+      row.dataset.pid = id;
+      row.innerHTML =
+        `<td class="c-pid"></td><td class="c-name"></td><td class="c-cpu"></td><td class="c-mem"></td>` +
+        `<td><button class="kill" data-pid="${id}" data-name="${esc(p.name)}" title="Quit process">✕</button></td>`;
+      body.appendChild(row);
+    }
+
+    // Update only the text cells — never touch the kill button
+    row.querySelector(".c-pid")!.textContent = String(p.pid);
+    row.querySelector(".c-name")!.textContent = p.name;
+    row.querySelector(".c-cpu")!.textContent = `${p.cpu.toFixed(1)}%`;
+    row.querySelector(".c-mem")!.textContent = `${mb(p.mem)} MB`;
+  }
+
+  // Remove rows for processes that are gone
+  body.querySelectorAll<HTMLTableRowElement>("tr[data-pid]").forEach((row) => {
+    if (!seen.has(row.dataset.pid!)) row.remove();
+  });
+}
+
 async function refreshSystem() {
   const s = await invoke<Stats>("get_stats");
   $("cpu").textContent = `${s.cpu.toFixed(1)}%`;
   $("mem").textContent = `${gb(s.mem_used)} / ${gb(s.mem_total)} GB`;
   const procs = await invoke<Proc[]>("get_processes");
-  $("proc-body").innerHTML = procs
-    .map(
-      (p) =>
-        `<tr>
-       <td>${p.pid}</td>
-       <td>${esc(p.name)}</td>
-       <td>${p.cpu.toFixed(1)}%</td>
-       <td>${mb(p.mem)} MB</td>
-       <td><button class="kill" data-pid="${p.pid}" data-name="${esc(p.name)}" title="Quit process">✕</button></td>
-     </tr>`,
-    )
-    .join("");
+  refreshSystem2(procs);
 }
 
 const seekbar = $("sp-seekbar") as HTMLInputElement;
