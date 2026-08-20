@@ -162,12 +162,35 @@ fn kill_process(state: tauri::State<'_, Mutex<System>>, pid: u32) -> bool {
         false
     }
 }
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct CalEvent {
+    title: String,
+    start: String,
+    end: String,
+    #[serde(rename = "allDay")]
+    all_day: bool,
+}
+
+#[tauri::command]
+async fn get_events(app: tauri::AppHandle) -> Vec<CalEvent> {
+    use tauri_plugin_shell::ShellExt;
+    let output = match app.shell().sidecar("calendar") {
+        Ok(cmd) => cmd.output().await,
+        Err(_) => return vec![],
+    };
+    let stdout = match output {
+        Ok(o) => String::from_utf8_lossy(&o.stdout).to_string(),
+        Err(_) => return vec![],
+    };
+    serde_json::from_str::<Vec<CalEvent>>(stdout.trim()).unwrap_or_default()
+}
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_shell::init())
         .manage(Mutex::new(System::new_all()))
-        .invoke_handler(tauri::generate_handler![greet, get_stats, get_processes, spotify_status, spotify_control, spotify_seek, kill_process])
+        .invoke_handler(tauri::generate_handler![greet, get_stats, get_processes, spotify_status, spotify_control, spotify_seek, kill_process, get_events])
         .setup(|app| {
             use tauri::Manager;
             use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};

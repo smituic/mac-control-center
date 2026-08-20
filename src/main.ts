@@ -21,6 +21,16 @@ interface Spotify {
   duration: number;
 }
 
+interface CalEvent {
+  title: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+}
+
+const clock = (iso: string) =>
+  new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
 const gb = (b: number) => (b / 1024 / 1024 / 1024).toFixed(1);
 const mb = (b: number) => (b / 1024 / 1024).toFixed(0);
 const esc = (s: string) =>
@@ -42,6 +52,7 @@ function setView(name: string) {
     .querySelectorAll<HTMLElement>(".rail-btn")
     .forEach((b) => b.classList.toggle("active", b.dataset.view === name));
   if (name === "spotify") refreshSpotify();
+  else if (name === "calendar") refreshCalendar();
 }
 document
   .querySelectorAll<HTMLElement>(".rail-btn")
@@ -122,6 +133,21 @@ async function refreshSpotify() {
   }
 }
 
+async function refreshCalendar() {
+  const list = $("cal-list");
+  const events = await invoke<CalEvent[]>("get_events");
+  if (events.length === 0) {
+    list.innerHTML = `<div class="cal-empty">Nothing on today.</div>`;
+    return;
+  }
+  list.innerHTML = events
+    .map((e) => {
+      const when = e.allDay ? "All day" : clock(e.start);
+      return `<div class="cal-item"><span class="cal-time">${when}</span><span class="cal-title">${esc(e.title)}</span></div>`;
+    })
+    .join("");
+}
+
 // Optimistic icon flip so play/pause responds instantly
 function control(action: string) {
   if (action === "playpause") {
@@ -177,10 +203,14 @@ $("proc-body").addEventListener("click", async (e) => {
   }
 });
 
+let calCounter = 0;
 async function tick() {
   try {
     await refreshSystem();
     if (currentView === "spotify") await refreshSpotify();
+    if (currentView === "calendar" && calCounter % 60 === 0)
+      await refreshCalendar();
+    calCounter++;
   } catch (e) {
     console.error(e);
   }

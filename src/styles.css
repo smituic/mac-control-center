@@ -252,3 +252,31 @@ td:last-child {
   padding: 3px 7px;
   font-size: 10px;
 }
+.cal-list {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cal-item {
+  display: flex;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  padding: 11px 13px;
+}
+.cal-time {
+  color: #9a9a9f;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  min-width: 64px;
+}
+.cal-title {
+  font-size: 14px;
+  font-weight: 500;
+}
+.cal-empty {
+  color: #8a8a90;
+  font-size: 14px;
+  margin-top: 20px;
+}
