@@ -159,8 +159,20 @@ td:nth-child(4) {
   background: rgba(255, 255, 255, 0.16);
   border-radius: 4px;
 }
+.sp-art {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 12px;
+  object-fit: cover;
+  background: rgba(255, 255, 255, 0.05);
+  display: none;
+  margin-top: 6px;
+}
+.sp-art.show {
+  display: block;
+}
 .sp-now {
-  margin: 22px 0;
+  margin: 14px 0;
   min-height: 42px;
 }
 .sp-track {
@@ -171,6 +183,25 @@ td:nth-child(4) {
   font-size: 13px;
   color: #9a9a9f;
   margin-top: 3px;
+}
+.sp-seek {
+  margin-bottom: 18px;
+}
+.sp-seekbar-hidden {
+  display: none;
+}
+input[type="range"]#sp-seekbar {
+  width: 100%;
+  accent-color: #ffffff;
+  cursor: pointer;
+}
+.sp-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #9a9a9f;
+  font-variant-numeric: tabular-nums;
+  margin-top: 4px;
 }
 .sp-controls {
   display: flex;

@@ -88,33 +88,56 @@ struct Spotify {
     playing: bool,
     track: String,
     artist: String,
+    art_url: String,
+    position: f64,
+    duration: f64,
 }
 
 #[tauri::command]
 fn spotify_status() -> Spotify {
     let script = r#"
+set theOut to "notrunning"
 if application "Spotify" is running then
     tell application "Spotify"
-        set st to player state as string
-        set tn to name of current track
-        set ar to artist of current track
+        set theState to player state as string
+        set theName to name of current track
+        set theArtist to artist of current track
+        set theDur to (duration of current track) / 1000
+        set thePos to player position
+        set theArt to ""
+        try
+            set theArt to artwork url of current track
+        end try
+        set theOut to theState & "|" & theName & "|" & theArtist & "|" & theArt & "|" & theDur & "|" & thePos
     end tell
-    return st & "|" & tn & "|" & ar
-else
-    return "notrunning"
 end if
+theOut
 "#;
     let out = run_osascript(script);
     if out.is_empty() || out == "notrunning" {
-        return Spotify { running: false, playing: false, track: String::new(), artist: String::new() };
+        return Spotify {
+            running: false, playing: false, track: String::new(), artist: String::new(),
+            art_url: String::new(), position: 0.0, duration: 0.0,
+        };
     }
-    let parts: Vec<&str> = out.splitn(3, '|').collect();
+    let p: Vec<&str> = out.splitn(6, '|').collect();
     Spotify {
         running: true,
-        playing: parts.get(0).copied().unwrap_or("") == "playing",
-        track: parts.get(1).copied().unwrap_or("").to_string(),
-        artist: parts.get(2).copied().unwrap_or("").to_string(),
+        playing: p.get(0).copied().unwrap_or("") == "playing",
+        track: p.get(1).copied().unwrap_or("").to_string(),
+        artist: p.get(2).copied().unwrap_or("").to_string(),
+        art_url: p.get(3).copied().unwrap_or("").to_string(),
+        duration: p.get(4).and_then(|s| s.parse().ok()).unwrap_or(0.0),
+        position: p.get(5).and_then(|s| s.parse().ok()).unwrap_or(0.0),
     }
+}
+
+#[tauri::command]
+fn spotify_seek(seconds: f64) {
+    let script = format!(
+        "if application \"Spotify\" is running then tell application \"Spotify\" to set player position to {seconds}"
+    );
+    run_osascript(&script);
 }
 
 #[tauri::command]
@@ -135,7 +158,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .manage(Mutex::new(System::new_all()))
-                .invoke_handler(tauri::generate_handler![greet, get_stats, get_processes, spotify_status, spotify_control])
+        .invoke_handler(tauri::generate_handler![greet, get_stats, get_processes, spotify_status, spotify_control, spotify_seek])
         .setup(|app| {
             use tauri::Manager;
             use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};

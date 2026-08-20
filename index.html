@@ -66,7 +66,21 @@
 
         <section class="view" id="view-spotify">
           <header class="head"><h1>Spotify</h1></header>
+          <img class="sp-art" id="sp-art" alt="" />
           <div class="sp-now" id="sp-now">—</div>
+          <div class="sp-seek">
+            <input
+              type="range"
+              id="sp-seekbar"
+              min="0"
+              max="100"
+              value="0"
+              step="1"
+            />
+            <div class="sp-times">
+              <span id="sp-cur">0:00</span><span id="sp-dur">0:00</span>
+            </div>
+          </div>
           <div class="sp-controls">
             <button id="sp-prev" class="sp-btn">⏮</button>
             <button id="sp-playpause" class="sp-btn sp-main">▶</button>
