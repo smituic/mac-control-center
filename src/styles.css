@@ -6,21 +6,30 @@
 html,
 body {
   height: 100%;
+  background: transparent; /* was implicitly opaque via body */
 }
 body {
   font-family:
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
     sans-serif;
-  background: #1b1b1d;
   color: #e6e6e6;
   overflow: hidden;
   -webkit-user-select: none;
   user-select: none;
+  background: transparent; /* remove the square tint from body */
 }
-
 .app {
   height: 100%;
   display: flex;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  background: rgba(
+    18,
+    18,
+    20,
+    0.82
+  ); /* tint now lives on the ROUNDED element */
 }
 
 .rail {
@@ -65,6 +74,7 @@ body {
 .content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .view {
   display: none;
@@ -91,7 +101,7 @@ body {
   justify-content: space-between;
   align-items: baseline;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 11px 13px;
 }
 .stat .k {
@@ -113,10 +123,25 @@ body {
   letter-spacing: 0.6px;
   margin: 4px 0 10px;
 }
+
+/* Process table — fixed layout with explicit column widths */
 table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 13px;
+}
+col.col-name {
+  width: auto;
+}
+col.col-cpu {
+  width: 52px;
+}
+col.col-mem {
+  width: 58px;
+}
+col.col-kill {
+  width: 30px;
 }
 th {
   text-align: left;
@@ -125,25 +150,49 @@ th {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 6px;
+  padding: 8px 6px;
 }
 td {
   padding: 8px 6px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+td.c-name {
+  color: #d6d6d6;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-td:nth-child(2) {
-  max-width: 150px;
-  color: #d6d6d6;
-}
+th:nth-child(2),
+td:nth-child(2),
 th:nth-child(3),
-th:nth-child(4),
-td:nth-child(3),
-td:nth-child(4) {
+td:nth-child(3) {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+th:last-child,
+td:last-child {
+  text-align: center;
+}
+
+.kill {
+  border: none;
+  background: transparent;
+  color: #6a6a70;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 6px;
+}
+.kill:hover {
+  background: rgba(255, 80, 80, 0.18);
+  color: #ff6b6b;
+}
+.kill.armed {
+  background: rgba(255, 80, 80, 0.22);
+  color: #ff6b6b;
+  padding: 3px 6px;
+  font-size: 10px;
 }
 
 .placeholder {
@@ -159,6 +208,8 @@ td:nth-child(4) {
   background: rgba(255, 255, 255, 0.16);
   border-radius: 4px;
 }
+
+/* Spotify */
 .sp-art {
   width: 100%;
   aspect-ratio: 1;
@@ -186,9 +237,6 @@ td:nth-child(4) {
 }
 .sp-seek {
   margin-bottom: 18px;
-}
-.sp-seekbar-hidden {
-  display: none;
 }
 input[type="range"]#sp-seekbar {
   width: 100%;
@@ -226,32 +274,8 @@ input[type="range"]#sp-seekbar {
   height: 52px;
   font-size: 18px;
 }
-th:last-child,
-td:last-child {
-  text-align: center;
-  width: 28px;
-}
-.kill {
-  border: none;
-  background: transparent;
-  color: #6a6a70;
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1;
-  padding: 4px;
-  border-radius: 6px;
-}
-.kill:hover {
-  background: rgba(255, 80, 80, 0.18);
-  color: #ff6b6b;
-}
-.kill.armed {
-  background: rgba(255, 80, 80, 0.22);
-  color: #ff6b6b;
-  width: auto;
-  padding: 3px 7px;
-  font-size: 10px;
-}
+
+/* Calendar */
 .cal-list {
   margin-top: 16px;
   display: flex;

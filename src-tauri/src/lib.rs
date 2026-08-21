@@ -60,11 +60,15 @@ fn show_panel(window: &tauri::WebviewWindow) {
         let mpos = monitor.position();
         let msize = monitor.size();
         let scale = monitor.scale_factor();
-        let menubar = (28.0 * scale) as i32;
+
+        let menubar = (32.0 * scale) as i32;   // gap below the menu bar
+        let gap = (10.0 * scale) as i32;        // gap from screen edges
         let width = (380.0 * scale) as u32;
-        let height = (msize.height as i32 - menubar).max(0) as u32;
-        let x = mpos.x + msize.width as i32 - width as i32;
+
+        let height = (msize.height as i32 - menubar - gap).max(0) as u32;
+        let x = mpos.x + msize.width as i32 - width as i32 - gap;  // pull left off the edge
         let y = mpos.y + menubar;
+
         let _ = window.set_size(tauri::PhysicalSize { width, height });
         let _ = window.set_position(tauri::PhysicalPosition { x, y });
     }
@@ -194,9 +198,20 @@ pub fn run() {
         .setup(|app| {
             use tauri::Manager;
             use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
+            use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState};
 
             #[cfg(target_os = "macos")]
             let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+            #[cfg(target_os = "macos")]
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = apply_vibrancy(
+                    &window,
+                    NSVisualEffectMaterial::HudWindow,
+                    Some(NSVisualEffectState::Active),
+                    Some(20.0),
+                );
+            }
 
             let _tray = TrayIconBuilder::with_id("main_tray")
                 .icon(app.default_window_icon().unwrap().clone())

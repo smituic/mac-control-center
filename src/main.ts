@@ -70,17 +70,15 @@ function refreshSystem2(procs: Proc[]) {
     let row = body.querySelector<HTMLTableRowElement>(`tr[data-pid="${id}"]`);
 
     if (!row) {
-      // New process: build the row once
       row = document.createElement("tr");
       row.dataset.pid = id;
       row.innerHTML =
-        `<td class="c-pid"></td><td class="c-name"></td><td class="c-cpu"></td><td class="c-mem"></td>` +
+        `<td class="c-name"></td><td class="c-cpu"></td><td class="c-mem"></td>` +
         `<td><button class="kill" data-pid="${id}" data-name="${esc(p.name)}" title="Quit process">✕</button></td>`;
       body.appendChild(row);
     }
 
     // Update only the text cells — never touch the kill button
-    row.querySelector(".c-pid")!.textContent = String(p.pid);
     row.querySelector(".c-name")!.textContent = p.name;
     row.querySelector(".c-cpu")!.textContent = `${p.cpu.toFixed(1)}%`;
     row.querySelector(".c-mem")!.textContent = `${mb(p.mem)} MB`;
@@ -177,24 +175,35 @@ seekbar.addEventListener("change", () => {
 let armedPid: number | null = null;
 let armTimer: number | undefined;
 
+function disarm(btn: HTMLButtonElement) {
+  btn.classList.remove("armed");
+  btn.textContent = "✕";
+  armedPid = null;
+}
+
 $("proc-body").addEventListener("click", async (e) => {
   const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".kill");
   if (!btn) return;
   const pid = Number(btn.dataset.pid);
 
   if (armedPid !== pid) {
-    // First click: arm this button
+    // Disarm any previously-armed button first
+    const prev = $("proc-body").querySelector<HTMLButtonElement>(".kill.armed");
+    if (prev) {
+      clearTimeout(armTimer);
+      disarm(prev);
+    }
+
+    // Arm this one
     armedPid = pid;
     btn.classList.add("armed");
     btn.textContent = "kill?";
     clearTimeout(armTimer);
-    armTimer = window.setTimeout(() => {
-      armedPid = null;
-    }, 2000);
+    armTimer = window.setTimeout(() => disarm(btn), 2000);
     return;
   }
 
-  // Second click on the same row: do it
+  // Second click on the same row: kill
   clearTimeout(armTimer);
   armedPid = null;
   const ok = await invoke<boolean>("kill_process", { pid });
@@ -207,7 +216,11 @@ let calCounter = 0;
 async function tick() {
   try {
     await refreshSystem();
-    if (currentView === "spotify") await refreshSpotify();
+    if (currentView === "spotify") {
+      await refreshSpotify();
+    } else if (calCounter % 3 === 0) {
+      refreshSpotify().catch(() => {}); // warm Spotify every ~3s in background, no await
+    }
     if (currentView === "calendar" && calCounter % 60 === 0)
       await refreshCalendar();
     calCounter++;
