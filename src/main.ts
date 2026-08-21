@@ -1,5 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 
+import { getCurrentWindow } from "@tauri-apps/api/window";
+
+const appWindow = getCurrentWindow();
+appWindow.onFocusChanged(({ payload: focused }) => {
+  if (!focused) appWindow.hide();
+});
+
 interface Stats {
   cpu: number;
   mem_used: number;

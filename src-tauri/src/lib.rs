@@ -1,5 +1,6 @@
 use std::sync::Mutex;
 use sysinfo::{System, ProcessesToUpdate};
+use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 
 #[tauri::command]
@@ -193,6 +194,7 @@ async fn get_events(app: tauri::AppHandle) -> Vec<CalEvent> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+
         .manage(Mutex::new(System::new_all()))
         .invoke_handler(tauri::generate_handler![greet, get_stats, get_processes, spotify_status, spotify_control, spotify_seek, kill_process, get_events])
         .setup(|app| {
@@ -211,6 +213,29 @@ pub fn run() {
                     Some(NSVisualEffectState::Active),
                     Some(20.0),
                 );
+            }
+
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_global_shortcut::{Shortcut, ShortcutState, Modifiers, Code};
+                let toggle = Shortcut::new(Some(Modifiers::ALT), Code::Space);
+                let app_handle = app.handle().clone();
+                app.handle().plugin(
+                    tauri_plugin_global_shortcut::Builder::new()
+                        .with_handler(move |_app, sc, event| {
+                            if sc == &toggle && event.state() == ShortcutState::Pressed {
+                                if let Some(w) = app_handle.get_webview_window("main") {
+                                    if w.is_visible().unwrap_or(false) {
+                                        let _ = w.hide();
+                                    } else {
+                                        show_panel(&w);
+                                    }
+                                }
+                            }
+                        })
+                        .build(),
+                )?;
+                app.global_shortcut().register(toggle)?;
             }
 
             let _tray = TrayIconBuilder::with_id("main_tray")
