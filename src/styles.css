@@ -209,70 +209,241 @@ td:last-child {
   border-radius: 4px;
 }
 
-/* Spotify */
-.sp-art {
+#view-spotify {
+  padding: 20px 20px 26px;
+  position: relative;
+  overflow: hidden;
+}
+#view-spotify.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ambient glow behind everything, driven by --glow */
+.sp-glow {
+  position: absolute;
+  top: -10%;
+  left: -20%;
+  width: 140%;
+  height: 55%;
+  background: radial-gradient(
+    60% 60% at 50% 30%,
+    var(--glow, rgba(120, 120, 120, 0.35)),
+    transparent 70%
+  );
+  filter: blur(46px);
+  opacity: 0;
+  transition:
+    opacity 0.6s ease,
+    background 0.6s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+.sp-glow.show {
+  opacity: 0.9;
+}
+#view-spotify > *:not(.sp-glow) {
+  position: relative;
+  z-index: 1;
+}
+
+.sp-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: #8a8a90;
+  margin-bottom: 16px;
+}
+.sp-art-wrap {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 12px;
-  object-fit: cover;
+  border-radius: 16px;
+  overflow: hidden;
   background: rgba(255, 255, 255, 0.05);
-  display: none;
-  margin-top: 6px;
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+  transform: scale(0.97);
+  transition: transform 0.5s ease;
 }
-.sp-art.show {
+.sp-art-wrap.playing {
+  transform: scale(1);
+} /* subtle pulse while playing */
+.sp-art-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   display: block;
+  opacity: 0;
+  transition: opacity 0.32s ease;
 }
+.sp-art-img.show {
+  opacity: 1;
+}
+
+.sp-meta {
+  margin: 18px 2px 8px;
+}
+/* marquee: title scrolls if too long */
 .sp-now {
-  margin: 14px 0;
-  min-height: 42px;
+  min-height: 46px;
+}
+.sp-track-wrap {
+  overflow: hidden;
+  white-space: nowrap;
 }
 .sp-track {
-  font-size: 15px;
-  font-weight: 600;
+  display: inline-block;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  will-change: transform;
+}
+
+@keyframes marquee {
+  0%,
+  12% {
+    transform: translateX(0);
+  }
+  88%,
+  100% {
+    transform: translateX(var(--shift, 0));
+  }
 }
 .sp-artist {
-  font-size: 13px;
+  font-size: 14px;
   color: #9a9a9f;
-  margin-top: 3px;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
 .sp-seek {
-  margin-bottom: 18px;
+  margin: 16px 2px 24px;
 }
-input[type="range"]#sp-seekbar {
-  width: 100%;
-  accent-color: #ffffff;
+.sp-track-bar {
+  position: relative;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
   cursor: pointer;
+}
+.sp-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0%;
+  background: #fff;
+  border-radius: 2px;
+}
+.sp-knob {
+  position: absolute;
+  top: 50%;
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  border-radius: 50%;
+  background: #fff;
+  transform: translateY(-50%);
+  left: 0%;
+  opacity: 0;
+  transition: opacity 0.15s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.sp-seek:hover .sp-knob {
+  opacity: 1;
 }
 .sp-times {
   display: flex;
   justify-content: space-between;
   font-size: 11px;
-  color: #9a9a9f;
+  color: #8a8a90;
   font-variant-numeric: tabular-nums;
-  margin-top: 4px;
+  margin-top: 9px;
 }
+
 .sp-controls {
   display: flex;
   align-items: center;
-  gap: 14px;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 6px;
 }
 .sp-btn {
-  width: 44px;
-  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  color: #e6e6e6;
-  font-size: 15px;
   cursor: pointer;
+  border-radius: 50%;
+  transition:
+    background 0.14s,
+    transform 0.08s;
 }
-.sp-btn:hover {
-  background: rgba(255, 255, 255, 0.14);
+.sp-btn:active {
+  transform: scale(0.92);
+}
+.sp-btn svg {
+  width: 20px;
+  height: 20px;
+}
+.sp-side {
+  width: 46px;
+  height: 46px;
+  color: #e6e6e6;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.1);
+}
+.sp-side:hover {
+  background: rgba(255, 255, 255, 0.13);
 }
 .sp-main {
-  width: 52px;
-  height: 52px;
-  font-size: 18px;
+  width: 60px;
+  height: 60px;
+  color: #111;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+.sp-main svg {
+  width: 26px;
+  height: 26px;
+}
+.sp-main:hover {
+  background: #f0f0f0;
+}
+
+.sp-vol {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 28px;
+  padding: 0 2px;
+}
+.sp-vol-ic {
+  width: 15px;
+  height: 15px;
+  color: #8a8a90;
+  flex-shrink: 0;
+}
+.sp-vol-bar {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+}
+.sp-vol-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 2px;
 }
 
 /* Calendar */

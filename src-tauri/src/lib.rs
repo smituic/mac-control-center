@@ -2,56 +2,37 @@ use std::sync::Mutex;
 use sysinfo::{System, ProcessesToUpdate};
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
-
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
-
 #[derive(serde::Serialize)]
-struct Stats {
-    cpu: f32,
-    mem_used: u64,
-    mem_total: u64,
-}
-
+struct Stats { cpu: f32, mem_used: u64, mem_total: u64 }
 
 #[tauri::command]
 fn get_stats(state: tauri::State<'_, Mutex<System>>) -> Stats {
     let mut sys = state.lock().unwrap();
     sys.refresh_cpu_usage();
     sys.refresh_memory();
-    Stats {
-        cpu: sys.global_cpu_usage(),
-        mem_used: sys.used_memory(),
-        mem_total: sys.total_memory(),
-    }
+    Stats { cpu: sys.global_cpu_usage(), mem_used: sys.used_memory(), mem_total: sys.total_memory() }
 }
 
 #[derive(serde::Serialize)]
-struct ProcInfo {
-    pid: u32,
-    name: String,
-    cpu: f32,
-    mem: u64,
-}
+struct ProcInfo { pid: u32, name: String, cpu: f32, mem: u64 }
 
 #[tauri::command]
 fn get_processes(state: tauri::State<'_, Mutex<System>>) -> Vec<ProcInfo> {
     let mut sys = state.lock().unwrap();
     sys.refresh_processes(ProcessesToUpdate::All, true);
-    let mut list: Vec<ProcInfo> = sys
-        .processes()
-        .iter()
+    let mut list: Vec<ProcInfo> = sys.processes().iter()
         .map(|(pid, p)| ProcInfo {
             pid: pid.as_u32(),
             name: p.name().to_string_lossy().to_string(),
             cpu: p.cpu_usage(),
             mem: p.memory(),
-        })
-        .collect();
-        list.sort_by(|a, b| b.mem.cmp(&a.mem));
+        }).collect();
+    list.sort_by(|a, b| b.mem.cmp(&a.mem));
     list.truncate(15);
     list
 }
@@ -61,15 +42,12 @@ fn show_panel(window: &tauri::WebviewWindow) {
         let mpos = monitor.position();
         let msize = monitor.size();
         let scale = monitor.scale_factor();
-
-        let menubar = (32.0 * scale) as i32;   // gap below the menu bar
-        let gap = (10.0 * scale) as i32;        // gap from screen edges
+        let menubar = (32.0 * scale) as i32;
+        let gap = (10.0 * scale) as i32;
         let width = (380.0 * scale) as u32;
-
         let height = (msize.height as i32 - menubar - gap).max(0) as u32;
-        let x = mpos.x + msize.width as i32 - width as i32 - gap;  // pull left off the edge
+        let x = mpos.x + msize.width as i32 - width as i32 - gap;
         let y = mpos.y + menubar;
-
         let _ = window.set_size(tauri::PhysicalSize { width, height });
         let _ = window.set_position(tauri::PhysicalPosition { x, y });
     }
@@ -77,12 +55,9 @@ fn show_panel(window: &tauri::WebviewWindow) {
     let _ = window.set_focus();
 }
 
-
 fn run_osascript(script: &str) -> String {
     std::process::Command::new("osascript")
-        .arg("-e")
-        .arg(script)
-        .output()
+        .arg("-e").arg(script).output()
         .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
         .unwrap_or_default()
 }
@@ -96,6 +71,7 @@ struct Spotify {
     art_url: String,
     position: f64,
     duration: f64,
+    volume: i64,
 }
 
 #[tauri::command]
@@ -109,11 +85,12 @@ if application "Spotify" is running then
         set theArtist to artist of current track
         set theDur to (duration of current track) / 1000
         set thePos to player position
+        set theVol to sound volume
         set theArt to ""
         try
             set theArt to artwork url of current track
         end try
-        set theOut to theState & "|" & theName & "|" & theArtist & "|" & theArt & "|" & theDur & "|" & thePos
+        set theOut to theState & "|" & theName & "|" & theArtist & "|" & theArt & "|" & theDur & "|" & thePos & "|" & theVol
     end tell
 end if
 theOut
@@ -122,10 +99,10 @@ theOut
     if out.is_empty() || out == "notrunning" {
         return Spotify {
             running: false, playing: false, track: String::new(), artist: String::new(),
-            art_url: String::new(), position: 0.0, duration: 0.0,
+            art_url: String::new(), position: 0.0, duration: 0.0, volume: 0,
         };
     }
-    let p: Vec<&str> = out.splitn(6, '|').collect();
+    let p: Vec<&str> = out.splitn(7, '|').collect();
     Spotify {
         running: true,
         playing: p.get(0).copied().unwrap_or("") == "playing",
@@ -134,14 +111,13 @@ theOut
         art_url: p.get(3).copied().unwrap_or("").to_string(),
         duration: p.get(4).and_then(|s| s.parse().ok()).unwrap_or(0.0),
         position: p.get(5).and_then(|s| s.parse().ok()).unwrap_or(0.0),
+        volume: p.get(6).and_then(|s| s.parse().ok()).unwrap_or(50),
     }
 }
 
 #[tauri::command]
 fn spotify_seek(seconds: f64) {
-    let script = format!(
-        "if application \"Spotify\" is running then tell application \"Spotify\" to set player position to {seconds}"
-    );
+    let script = format!("if application \"Spotify\" is running then tell application \"Spotify\" to set player position to {seconds}");
     run_osascript(&script);
 }
 
@@ -157,15 +133,17 @@ fn spotify_control(action: String) {
     run_osascript(&script);
 }
 
+#[tauri::command]
+fn spotify_volume(level: i64) {
+    let v = level.clamp(0, 100);
+    let script = format!("if application \"Spotify\" is running then tell application \"Spotify\" to set sound volume to {v}");
+    run_osascript(&script);
+}
 
 #[tauri::command]
 fn kill_process(state: tauri::State<'_, Mutex<System>>, pid: u32) -> bool {
     let sys = state.lock().unwrap();
-    if let Some(proc) = sys.process(sysinfo::Pid::from_u32(pid)) {
-        proc.kill()
-    } else {
-        false
-    }
+    if let Some(proc) = sys.process(sysinfo::Pid::from_u32(pid)) { proc.kill() } else { false }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -190,13 +168,13 @@ async fn get_events(app: tauri::AppHandle) -> Vec<CalEvent> {
     };
     serde_json::from_str::<Vec<CalEvent>>(stdout.trim()).unwrap_or_default()
 }
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-
         .manage(Mutex::new(System::new_all()))
-        .invoke_handler(tauri::generate_handler![greet, get_stats, get_processes, spotify_status, spotify_control, spotify_seek, kill_process, get_events])
+        .invoke_handler(tauri::generate_handler![greet, get_stats, get_processes, spotify_status, spotify_control, spotify_seek, spotify_volume, kill_process, get_events])
         .setup(|app| {
             use tauri::Manager;
             use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
@@ -225,11 +203,8 @@ pub fn run() {
                         .with_handler(move |_app, sc, event| {
                             if sc == &toggle && event.state() == ShortcutState::Pressed {
                                 if let Some(w) = app_handle.get_webview_window("main") {
-                                    if w.is_visible().unwrap_or(false) {
-                                        let _ = w.hide();
-                                    } else {
-                                        show_panel(&w);
-                                    }
+                                    if w.is_visible().unwrap_or(false) { let _ = w.hide(); }
+                                    else { show_panel(&w); }
                                 }
                             }
                         })
@@ -247,14 +222,10 @@ pub fn run() {
                         button: MouseButton::Left,
                         button_state: MouseButtonState::Up,
                         ..
-                    } = event
-                    {
+                    } = event {
                         if let Some(window) = tray.app_handle().get_webview_window("main") {
-                            if window.is_visible().unwrap_or(false) {
-                                let _ = window.hide();
-                            } else {
-                                show_panel(&window);
-                            }
+                            if window.is_visible().unwrap_or(false) { let _ = window.hide(); }
+                            else { show_panel(&window); }
                         }
                     }
                 })

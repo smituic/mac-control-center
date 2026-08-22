@@ -51,6 +51,7 @@
       </nav>
 
       <main class="content">
+        <!-- SYSTEM -->
         <section class="view active" id="view-system">
           <header class="head"><h1>System</h1></header>
           <section class="stats">
@@ -84,29 +85,63 @@
         </section>
 
         <section class="view" id="view-spotify">
-          <header class="head"><h1>Spotify</h1></header>
-          <img class="sp-art" id="sp-art" alt="" />
-          <div class="sp-now" id="sp-now">—</div>
-          <div class="sp-seek">
-            <input
-              type="range"
-              id="sp-seekbar"
-              min="0"
-              max="100"
-              value="0"
-              step="1"
+          <div class="sp-glow" id="sp-glow"></div>
+          <div class="sp-label">Music</div>
+          <div class="sp-art-wrap">
+            <img
+              class="sp-art-img"
+              id="sp-art"
+              alt=""
+              crossorigin="anonymous"
             />
+          </div>
+          <div class="sp-meta">
+            <div class="sp-now" id="sp-now">—</div>
+          </div>
+          <div class="sp-seek" id="sp-seek">
+            <div class="sp-track-bar">
+              <div class="sp-fill" id="sp-fill"></div>
+              <div class="sp-knob" id="sp-knob"></div>
+            </div>
             <div class="sp-times">
               <span id="sp-cur">0:00</span><span id="sp-dur">0:00</span>
             </div>
           </div>
           <div class="sp-controls">
-            <button id="sp-prev" class="sp-btn">⏮</button>
-            <button id="sp-playpause" class="sp-btn sp-main">▶</button>
-            <button id="sp-next" class="sp-btn">⏭</button>
+            <button id="sp-prev" class="sp-btn sp-side" aria-label="Previous">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M6 5h2v14H6zM20 5v14L9 12z" />
+              </svg>
+            </button>
+            <button
+              id="sp-playpause"
+              class="sp-btn sp-main"
+              aria-label="Play/Pause"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
+            <button id="sp-next" class="sp-btn sp-side" aria-label="Next">
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M16 5h2v14h-2zM4 5l11 7-11 7z" />
+              </svg>
+            </button>
+          </div>
+          <div class="sp-vol">
+            <svg viewBox="0 0 24 24" fill="currentColor" class="sp-vol-ic">
+              <path d="M3 9v6h4l5 5V4L7 9z" />
+            </svg>
+            <div class="sp-vol-bar" id="sp-vol-bar">
+              <div class="sp-vol-fill" id="sp-vol-fill"></div>
+            </div>
+            <svg viewBox="0 0 24 24" fill="currentColor" class="sp-vol-ic">
+              <path d="M3 9v6h4l5 5V4L7 9z M16 8a5 5 0 010 8" />
+            </svg>
           </div>
         </section>
 
+        <!-- CALENDAR -->
         <section class="view" id="view-calendar">
           <header class="head"><h1>Today</h1></header>
           <div class="cal-list" id="cal-list">

@@ -1,12 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
 
-import { getCurrentWindow } from "@tauri-apps/api/window";
-
-const appWindow = getCurrentWindow();
-appWindow.onFocusChanged(({ payload: focused }) => {
-  if (!focused) appWindow.hide();
-});
-
 interface Stats {
   cpu: number;
   mem_used: number;
@@ -26,8 +19,8 @@ interface Spotify {
   art_url: string;
   position: number;
   duration: number;
+  volume: number;
 }
-
 interface CalEvent {
   title: string;
   start: string;
@@ -37,7 +30,6 @@ interface CalEvent {
 
 const clock = (iso: string) =>
   new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-
 const gb = (b: number) => (b / 1024 / 1024 / 1024).toFixed(1);
 const mb = (b: number) => (b / 1024 / 1024).toFixed(0);
 const esc = (s: string) =>
@@ -46,9 +38,32 @@ const time = (s: number) =>
   `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 let currentView = "system";
-let seeking = false; // true while the user is dragging the seek bar
+let seeking = false;
 
 const $ = (id: string) => document.getElementById(id)!;
+
+let marqueeTimer: number | undefined;
+function startMarquee() {
+  clearInterval(marqueeTimer);
+  const wrap = document.querySelector(".sp-track-wrap") as HTMLElement;
+  const span = document.querySelector(".sp-track") as HTMLElement;
+  if (!wrap || !span) return;
+  span.style.transform = "translateX(0)";
+  span.style.transition = "none";
+  const overflow = span.scrollWidth - wrap.clientWidth;
+  if (overflow <= 6) return; // fits — no scroll needed
+
+  const shift = overflow + 14;
+  let atStart = true;
+  // ease the movement; flip direction every few seconds
+  marqueeTimer = window.setInterval(() => {
+    span.style.transition = "transform 4s ease-in-out";
+    span.style.transform = atStart
+      ? `translateX(-${shift}px)`
+      : "translateX(0)";
+    atStart = !atStart;
+  }, 4500);
+}
 
 function setView(name: string) {
   currentView = name;
@@ -70,12 +85,10 @@ document
 function refreshSystem2(procs: Proc[]) {
   const body = $("proc-body") as HTMLTableSectionElement;
   const seen = new Set<string>();
-
   for (const p of procs) {
     const id = String(p.pid);
     seen.add(id);
     let row = body.querySelector<HTMLTableRowElement>(`tr[data-pid="${id}"]`);
-
     if (!row) {
       row = document.createElement("tr");
       row.dataset.pid = id;
@@ -84,14 +97,10 @@ function refreshSystem2(procs: Proc[]) {
         `<td><button class="kill" data-pid="${id}" data-name="${esc(p.name)}" title="Quit process">✕</button></td>`;
       body.appendChild(row);
     }
-
-    // Update only the text cells — never touch the kill button
     row.querySelector(".c-name")!.textContent = p.name;
     row.querySelector(".c-cpu")!.textContent = `${p.cpu.toFixed(1)}%`;
     row.querySelector(".c-mem")!.textContent = `${mb(p.mem)} MB`;
   }
-
-  // Remove rows for processes that are gone
   body.querySelectorAll<HTMLTableRowElement>("tr[data-pid]").forEach((row) => {
     if (!seen.has(row.dataset.pid!)) row.remove();
   });
@@ -105,39 +114,166 @@ async function refreshSystem() {
   refreshSystem2(procs);
 }
 
-const seekbar = $("sp-seekbar") as HTMLInputElement;
+// ---- Spotify ----
+const fill = $("sp-fill");
+const knob = $("sp-knob");
+const seekEl = $("sp-seek");
+const volFill = $("sp-vol-fill");
+const volBar = $("sp-vol-bar");
+let seekDur = 0;
+let lastTrackKey = "";
+
+const glow = $("sp-glow");
+const artWrap = () => document.querySelector(".sp-art-wrap") as HTMLElement;
+
+function applyGlow(img: HTMLImageElement) {
+  try {
+    const c = document.createElement("canvas");
+    c.width = 1;
+    c.height = 1;
+    const ctx = c.getContext("2d")!;
+    ctx.drawImage(img, 0, 0, 1, 1);
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    glow.style.setProperty("--glow", `rgba(${r}, ${g}, ${b}, 0.5)`);
+    glow.classList.add("show");
+  } catch {
+    glow.classList.remove("show");
+  } // CORS-blocked → no glow, no crash
+}
 
 async function refreshSpotify() {
   const sp = await invoke<Spotify>("spotify_status");
   const now = $("sp-now");
   const art = $("sp-art") as HTMLImageElement;
+  const pp = $("sp-playpause");
 
   if (!sp.running || !sp.track) {
     now.textContent = sp.running ? "Nothing playing" : "Spotify isn't running";
     art.classList.remove("show");
-    seekbar.value = "0";
+    glow.classList.remove("show");
+    fill.style.width = "0%";
+    knob.style.left = "0%";
     $("sp-cur").textContent = "0:00";
     $("sp-dur").textContent = "0:00";
     return;
   }
 
-  now.innerHTML = `<div class="sp-track">${esc(sp.track)}</div><div class="sp-artist">${esc(sp.artist)}</div>`;
-  $("sp-playpause").textContent = sp.playing ? "⏸" : "▶";
+  // marquee-aware title + artist
+  // title + artist
+
+  // Only rebuild the title when the song changes — otherwise the marquee restarts every tick
+  if (lastTrackKey !== sp.track + "|" + sp.artist) {
+    lastTrackKey = sp.track + "|" + sp.artist;
+    now.innerHTML =
+      `<div class="sp-track-wrap"><span class="sp-track" id="sp-track">${esc(sp.track)}</span></div>` +
+      `<div class="sp-artist">${esc(sp.artist)}</div>`;
+    setTimeout(startMarquee, 120);
+  }
+
+  pp.innerHTML = sp.playing
+    ? `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>`
+    : `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+
+  const wrap = artWrap();
+  if (wrap) wrap.classList.toggle("playing", sp.playing);
 
   if (sp.art_url.startsWith("http")) {
-    art.src = sp.art_url;
-    art.classList.add("show");
-  } else art.classList.remove("show");
+    if (art.getAttribute("src") !== sp.art_url) {
+      art.classList.remove("show");
+      art.src = sp.art_url;
+      art.onload = () => {
+        art.classList.add("show");
+        applyGlow(art);
+      };
+    }
+    if (art.complete) {
+      art.classList.add("show");
+      applyGlow(art);
+    }
+  } else {
+    art.classList.remove("show");
+    glow.classList.remove("show");
+  }
 
-  $("sp-dur").textContent = time(sp.duration);
+  seekDur = sp.duration || 0;
+  $("sp-dur").textContent = `-${time(Math.max(0, seekDur - sp.position))}`;
   if (!seeking) {
-    // don't fight the user's drag
-    seekbar.max = String(Math.floor(sp.duration));
-    seekbar.value = String(Math.floor(sp.position));
+    const pct = seekDur ? (sp.position / seekDur) * 100 : 0;
+    fill.style.width = `${pct}%`;
+    knob.style.left = `${pct}%`;
     $("sp-cur").textContent = time(sp.position);
   }
+  volFill.style.width = `${sp.volume}%`;
 }
 
+// Play/pause/skip — optimistic icon flip for instant feel
+function control(action: string) {
+  if (action === "playpause") {
+    const pp = $("sp-playpause");
+    const isPause = !!pp.querySelector('path[d^="M7 5"]');
+    pp.innerHTML = isPause
+      ? `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`
+      : `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>`;
+  }
+  invoke("spotify_control", { action }).then(() =>
+    setTimeout(refreshSpotify, 250),
+  );
+}
+$("sp-prev").addEventListener("click", () => control("prev"));
+$("sp-playpause").addEventListener("click", () => control("playpause"));
+$("sp-next").addEventListener("click", () => control("next"));
+
+// Seek: click / drag anywhere on the bar
+function seekPct(e: MouseEvent) {
+  const r = seekEl.querySelector(".sp-track-bar")!.getBoundingClientRect();
+  const pct = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+  fill.style.width = `${pct * 100}%`;
+  knob.style.left = `${pct * 100}%`;
+  $("sp-cur").textContent = time(pct * seekDur);
+  return pct;
+}
+seekEl.addEventListener("mousedown", (e) => {
+  seeking = true;
+  seekPct(e);
+  const move = (ev: MouseEvent) => seekPct(ev);
+  const up = (ev: MouseEvent) => {
+    const pct = seekPct(ev);
+    invoke("spotify_seek", { seconds: pct * seekDur }).then(() => {
+      seeking = false;
+      setTimeout(refreshSpotify, 250);
+    });
+    document.removeEventListener("mousemove", move);
+    document.removeEventListener("mouseup", up);
+  };
+  document.addEventListener("mousemove", move);
+  document.addEventListener("mouseup", up);
+});
+
+// Volume: click / drag
+// Volume: knob follows cursor instantly; Spotify updated throttled + on release
+volBar.addEventListener("mousedown", (e) => {
+  let lastSent = 0;
+  const apply = (ev: MouseEvent, force: boolean) => {
+    const r = volBar.getBoundingClientRect();
+    const pct = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
+    volFill.style.width = `${pct * 100}%`;
+    const t = Date.now();
+    if (force || t - lastSent > 120) {
+      lastSent = t;
+      invoke("spotify_volume", { level: Math.round(pct * 100) });
+    }
+  };
+  apply(e, true);
+  const move = (ev: MouseEvent) => apply(ev, false);
+  const up = (ev: MouseEvent) => {
+    apply(ev, true);
+    document.removeEventListener("mousemove", move);
+    document.removeEventListener("mouseup", up);
+  };
+  document.addEventListener("mousemove", move);
+  document.addEventListener("mouseup", up);
+});
+// ---- Calendar ----
 async function refreshCalendar() {
   const list = $("cal-list");
   const events = await invoke<CalEvent[]>("get_events");
@@ -153,35 +289,9 @@ async function refreshCalendar() {
     .join("");
 }
 
-// Optimistic icon flip so play/pause responds instantly
-function control(action: string) {
-  if (action === "playpause") {
-    const b = $("sp-playpause");
-    b.textContent = b.textContent === "⏸" ? "▶" : "⏸";
-  }
-  invoke("spotify_control", { action }).then(() =>
-    setTimeout(refreshSpotify, 250),
-  );
-}
-$("sp-prev").addEventListener("click", () => control("prev"));
-$("sp-playpause").addEventListener("click", () => control("playpause"));
-$("sp-next").addEventListener("click", () => control("next"));
-
-// Seek: mark while dragging, commit on release
-seekbar.addEventListener("input", () => {
-  seeking = true;
-  $("sp-cur").textContent = time(Number(seekbar.value));
-});
-seekbar.addEventListener("change", () => {
-  invoke("spotify_seek", { seconds: Number(seekbar.value) }).then(() => {
-    seeking = false;
-    setTimeout(refreshSpotify, 250);
-  });
-});
-
+// ---- Kill button ----
 let armedPid: number | null = null;
 let armTimer: number | undefined;
-
 function disarm(btn: HTMLButtonElement) {
   btn.classList.remove("armed");
   btn.textContent = "✕";
@@ -192,16 +302,12 @@ $("proc-body").addEventListener("click", async (e) => {
   const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".kill");
   if (!btn) return;
   const pid = Number(btn.dataset.pid);
-
   if (armedPid !== pid) {
-    // Disarm any previously-armed button first
     const prev = $("proc-body").querySelector<HTMLButtonElement>(".kill.armed");
     if (prev) {
       clearTimeout(armTimer);
       disarm(prev);
     }
-
-    // Arm this one
     armedPid = pid;
     btn.classList.add("armed");
     btn.textContent = "kill?";
@@ -209,8 +315,6 @@ $("proc-body").addEventListener("click", async (e) => {
     armTimer = window.setTimeout(() => disarm(btn), 2000);
     return;
   }
-
-  // Second click on the same row: kill
   clearTimeout(armTimer);
   armedPid = null;
   const ok = await invoke<boolean>("kill_process", { pid });
@@ -219,15 +323,13 @@ $("proc-body").addEventListener("click", async (e) => {
   }
 });
 
+// ---- Loop ----
 let calCounter = 0;
 async function tick() {
   try {
     await refreshSystem();
-    if (currentView === "spotify") {
-      await refreshSpotify();
-    } else if (calCounter % 3 === 0) {
-      refreshSpotify().catch(() => {}); // warm Spotify every ~3s in background, no await
-    }
+    if (currentView === "spotify") await refreshSpotify();
+    else if (calCounter % 3 === 0) refreshSpotify().catch(() => {});
     if (currentView === "calendar" && calCounter % 60 === 0)
       await refreshCalendar();
     calCounter++;
@@ -235,6 +337,5 @@ async function tick() {
     console.error(e);
   }
 }
-
 tick();
 setInterval(tick, 1000);
