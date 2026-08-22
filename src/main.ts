@@ -20,6 +20,8 @@ interface Spotify {
   position: number;
   duration: number;
   volume: number;
+  shuffle: boolean;
+  repeat: boolean;
 }
 interface CalEvent {
   title: string;
@@ -39,9 +41,12 @@ const time = (s: number) =>
 
 let currentView = "system";
 let seeking = false;
+let seekDur = 0;
+let lastTrackKey = "";
 
 const $ = (id: string) => document.getElementById(id)!;
 
+// ---- Marquee (scrolls long titles) ----
 let marqueeTimer: number | undefined;
 function startMarquee() {
   clearInterval(marqueeTimer);
@@ -51,11 +56,9 @@ function startMarquee() {
   span.style.transform = "translateX(0)";
   span.style.transition = "none";
   const overflow = span.scrollWidth - wrap.clientWidth;
-  if (overflow <= 6) return; // fits — no scroll needed
-
+  if (overflow <= 6) return;
   const shift = overflow + 14;
   let atStart = true;
-  // ease the movement; flip direction every few seconds
   marqueeTimer = window.setInterval(() => {
     span.style.transition = "transform 4s ease-in-out";
     span.style.transform = atStart
@@ -65,6 +68,7 @@ function startMarquee() {
   }, 4500);
 }
 
+// ---- View switching ----
 function setView(name: string) {
   currentView = name;
   document
@@ -82,6 +86,7 @@ document
     btn.addEventListener("click", () => setView(btn.dataset.view!)),
   );
 
+// ---- System ----
 function refreshSystem2(procs: Proc[]) {
   const body = $("proc-body") as HTMLTableSectionElement;
   const seen = new Set<string>();
@@ -120,9 +125,6 @@ const knob = $("sp-knob");
 const seekEl = $("sp-seek");
 const volFill = $("sp-vol-fill");
 const volBar = $("sp-vol-bar");
-let seekDur = 0;
-let lastTrackKey = "";
-
 const glow = $("sp-glow");
 const artWrap = () => document.querySelector(".sp-art-wrap") as HTMLElement;
 
@@ -138,7 +140,7 @@ function applyGlow(img: HTMLImageElement) {
     glow.classList.add("show");
   } catch {
     glow.classList.remove("show");
-  } // CORS-blocked → no glow, no crash
+  }
 }
 
 async function refreshSpotify() {
@@ -155,13 +157,11 @@ async function refreshSpotify() {
     knob.style.left = "0%";
     $("sp-cur").textContent = "0:00";
     $("sp-dur").textContent = "0:00";
+    lastTrackKey = "";
     return;
   }
 
-  // marquee-aware title + artist
-  // title + artist
-
-  // Only rebuild the title when the song changes — otherwise the marquee restarts every tick
+  // Rebuild title only when the song changes (so the marquee isn't reset every tick)
   if (lastTrackKey !== sp.track + "|" + sp.artist) {
     lastTrackKey = sp.track + "|" + sp.artist;
     now.innerHTML =
@@ -173,6 +173,10 @@ async function refreshSpotify() {
   pp.innerHTML = sp.playing
     ? `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>`
     : `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
+
+  // shuffle / repeat lit state
+  $("sp-shuffle").classList.toggle("on", sp.shuffle);
+  $("sp-repeat").classList.toggle("on", sp.repeat);
 
   const wrap = artWrap();
   if (wrap) wrap.classList.toggle("playing", sp.playing);
@@ -206,7 +210,7 @@ async function refreshSpotify() {
   volFill.style.width = `${sp.volume}%`;
 }
 
-// Play/pause/skip — optimistic icon flip for instant feel
+// Play/pause/skip — optimistic icon flip
 function control(action: string) {
   if (action === "playpause") {
     const pp = $("sp-playpause");
@@ -223,7 +227,21 @@ $("sp-prev").addEventListener("click", () => control("prev"));
 $("sp-playpause").addEventListener("click", () => control("playpause"));
 $("sp-next").addEventListener("click", () => control("next"));
 
-// Seek: click / drag anywhere on the bar
+// Shuffle / repeat toggles — optimistic lit flip
+$("sp-shuffle").addEventListener("click", () => {
+  $("sp-shuffle").classList.toggle("on");
+  invoke("spotify_toggle", { what: "shuffle" }).then(() =>
+    setTimeout(refreshSpotify, 250),
+  );
+});
+$("sp-repeat").addEventListener("click", () => {
+  $("sp-repeat").classList.toggle("on");
+  invoke("spotify_toggle", { what: "repeat" }).then(() =>
+    setTimeout(refreshSpotify, 250),
+  );
+});
+
+// Seek: click / drag
 function seekPct(e: MouseEvent) {
   const r = seekEl.querySelector(".sp-track-bar")!.getBoundingClientRect();
   const pct = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
@@ -249,8 +267,7 @@ seekEl.addEventListener("mousedown", (e) => {
   document.addEventListener("mouseup", up);
 });
 
-// Volume: click / drag
-// Volume: knob follows cursor instantly; Spotify updated throttled + on release
+// Volume: instant bar, throttled command
 volBar.addEventListener("mousedown", (e) => {
   let lastSent = 0;
   const apply = (ev: MouseEvent, force: boolean) => {
@@ -273,6 +290,7 @@ volBar.addEventListener("mousedown", (e) => {
   document.addEventListener("mousemove", move);
   document.addEventListener("mouseup", up);
 });
+
 // ---- Calendar ----
 async function refreshCalendar() {
   const list = $("cal-list");

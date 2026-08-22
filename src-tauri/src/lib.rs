@@ -72,6 +72,8 @@ struct Spotify {
     position: f64,
     duration: f64,
     volume: i64,
+    shuffle: bool,
+    repeat: bool,
 }
 
 #[tauri::command]
@@ -86,11 +88,13 @@ if application "Spotify" is running then
         set theDur to (duration of current track) / 1000
         set thePos to player position
         set theVol to sound volume
+        set theShuf to shuffling
+        set theRep to repeating
         set theArt to ""
         try
             set theArt to artwork url of current track
         end try
-        set theOut to theState & "|" & theName & "|" & theArtist & "|" & theArt & "|" & theDur & "|" & thePos & "|" & theVol
+        set theOut to theState & "|" & theName & "|" & theArtist & "|" & theArt & "|" & theDur & "|" & thePos & "|" & theVol & "|" & theShuf & "|" & theRep
     end tell
 end if
 theOut
@@ -100,9 +104,10 @@ theOut
         return Spotify {
             running: false, playing: false, track: String::new(), artist: String::new(),
             art_url: String::new(), position: 0.0, duration: 0.0, volume: 0,
+            shuffle: false, repeat: false,
         };
     }
-    let p: Vec<&str> = out.splitn(7, '|').collect();
+    let p: Vec<&str> = out.splitn(9, '|').collect();
     Spotify {
         running: true,
         playing: p.get(0).copied().unwrap_or("") == "playing",
@@ -112,7 +117,20 @@ theOut
         duration: p.get(4).and_then(|s| s.parse().ok()).unwrap_or(0.0),
         position: p.get(5).and_then(|s| s.parse().ok()).unwrap_or(0.0),
         volume: p.get(6).and_then(|s| s.parse().ok()).unwrap_or(50),
+        shuffle: p.get(7).copied().unwrap_or("") == "true",
+        repeat: p.get(8).copied().unwrap_or("") == "true",
     }
+}
+
+#[tauri::command]
+fn spotify_toggle(what: String) {
+    let cmd = match what.as_str() {
+        "shuffle" => "set shuffling to (not shuffling)",
+        "repeat"  => "set repeating to (not repeating)",
+        _ => return,
+    };
+    let script = format!("if application \"Spotify\" is running then tell application \"Spotify\" to {cmd}");
+    run_osascript(&script);
 }
 
 #[tauri::command]
@@ -174,7 +192,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .manage(Mutex::new(System::new_all()))
-        .invoke_handler(tauri::generate_handler![greet, get_stats, get_processes, spotify_status, spotify_control, spotify_seek, spotify_volume, kill_process, get_events])
+        .invoke_handler(tauri::generate_handler![greet, get_stats, get_processes, spotify_status, spotify_control, spotify_seek, spotify_volume, kill_process, get_events, spotify_toggle])
         .setup(|app| {
             use tauri::Manager;
             use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};

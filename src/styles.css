@@ -369,7 +369,7 @@ td:last-child {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 24px;
+  gap: 16px;
   margin-top: 6px;
 }
 .sp-btn {
@@ -446,6 +446,25 @@ td:last-child {
   border-radius: 2px;
 }
 
+.sp-mini {
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  color: #7a7a80;
+  opacity: 0.55;
+}
+.sp-mini:hover {
+  opacity: 0.85;
+  background: rgba(255, 255, 255, 0.05);
+}
+.sp-mini svg {
+  width: 17px;
+  height: 17px;
+}
+.sp-mini.on {
+  opacity: 1;
+  color: #fff;
+}
 /* Calendar */
 .cal-list {
   margin-top: 16px;
