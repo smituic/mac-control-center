@@ -302,7 +302,7 @@ async function refreshCalendar() {
     month: "long",
     day: "numeric",
   });
-
+  renderMonth();
   const events = await invoke<CalEvent[]>("get_events");
 
   if (events.length === 0) {
@@ -363,6 +363,34 @@ async function refreshCalendar() {
       return `<div class="cal-group-label">${g.label}</div>${items}`;
     })
     .join("");
+}
+
+function renderMonth() {
+  const el = $("cal-month");
+  const now = new Date();
+  const year = now.getFullYear(),
+    month = now.getMonth(),
+    today = now.getDate();
+  const monthName = now.toLocaleDateString([], {
+    month: "long",
+    year: "numeric",
+  });
+
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const dows = ["S", "M", "T", "W", "T", "F", "S"];
+  let cells = dows.map((d) => `<div class="cal-dow">${d}</div>`).join("");
+  for (let i = 0; i < firstDay; i++)
+    cells += `<div class="cal-cell blank"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const cls = d === today ? "cal-cell today" : "cal-cell";
+    cells += `<div class="${cls}">${d}</div>`;
+  }
+
+  el.innerHTML =
+    `<div class="cal-month-head"><div class="cal-month-title">${monthName}</div></div>` +
+    `<div class="cal-grid">${cells}</div>`;
 }
 
 // ---- Kill button ----

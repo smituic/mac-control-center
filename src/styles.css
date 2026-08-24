@@ -578,3 +578,59 @@ td:last-child {
 .cal-empty .cal-empty-sub {
   font-size: 13px;
 }
+
+.cal-month {
+  margin-top: auto; /* pushes it to the bottom of the panel */
+  padding-top: 22px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+#view-calendar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.cal-month-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.cal-month-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.cal-dow {
+  text-align: center;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: #6a6a70;
+  text-transform: uppercase;
+  padding-bottom: 6px;
+}
+.cal-cell {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: #b0b0b6;
+  border-radius: 7px;
+  font-variant-numeric: tabular-nums;
+}
+.cal-cell.blank {
+  color: transparent;
+}
+.cal-cell.today {
+  background: #5b8cff;
+  color: #fff;
+  font-weight: 700;
+}
+.cal-cell.dim {
+  color: #4a4a50;
+}
