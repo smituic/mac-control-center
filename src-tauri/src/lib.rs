@@ -37,6 +37,9 @@ fn get_processes(state: tauri::State<'_, Mutex<System>>) -> Vec<ProcInfo> {
     list
 }
 
+use std::sync::atomic::{AtomicBool, Ordering};
+static DOCK_LEFT: AtomicBool = AtomicBool::new(false);
+
 fn show_panel(window: &tauri::WebviewWindow) {
     if let Ok(Some(monitor)) = window.primary_monitor() {
         let mpos = monitor.position();
@@ -46,8 +49,12 @@ fn show_panel(window: &tauri::WebviewWindow) {
         let gap = (10.0 * scale) as i32;
         let width = (380.0 * scale) as u32;
         let height = (msize.height as i32 - menubar - gap).max(0) as u32;
-        let x = mpos.x + msize.width as i32 - width as i32 - gap;
         let y = mpos.y + menubar;
+        let x = if DOCK_LEFT.load(Ordering::Relaxed) {
+            mpos.x + gap
+        } else {
+            mpos.x + msize.width as i32 - width as i32 - gap
+        };
         let _ = window.set_size(tauri::PhysicalSize { width, height });
         let _ = window.set_position(tauri::PhysicalPosition { x, y });
     }
@@ -235,10 +242,30 @@ pub fn run() {
                 app.global_shortcut().register(toggle)?;
             }
 
+            use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+            let dock_left = MenuItem::with_id(app, "dock_left", "Dock Left", true, None::<&str>)?;
+            let dock_right = MenuItem::with_id(app, "dock_right", "Dock Right", true, None::<&str>)?;
+            let quit = PredefinedMenuItem::quit(app, Some("Quit"))?;
+            let menu = Menu::with_items(app, &[&dock_left, &dock_right, &PredefinedMenuItem::separator(app)?, &quit])?;
+
             let _tray = TrayIconBuilder::with_id("main_tray")
                 .icon(app.default_window_icon().unwrap().clone())
                 .icon_as_template(true)
+                .menu(&menu)
                 .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| {
+                    match event.id().as_ref() {
+                        "dock_left" => {
+                            DOCK_LEFT.store(true, Ordering::Relaxed);
+                            if let Some(w) = app.get_webview_window("main") { show_panel(&w); }
+                        }
+                        "dock_right" => {
+                            DOCK_LEFT.store(false, Ordering::Relaxed);
+                            if let Some(w) = app.get_webview_window("main") { show_panel(&w); }
+                        }
+                        _ => {}
+                    }
+                })
                 .on_tray_icon_event(|tray, event| {
                     if let TrayIconEvent::Click {
                         button: MouseButton::Left,

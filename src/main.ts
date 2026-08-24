@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 interface Stats {
   cpu: number;
@@ -464,5 +465,7 @@ async function tick() {
     console.error(e);
   }
 }
+
+$("close-btn").addEventListener("click", () => getCurrentWindow().hide());
 tick();
 setInterval(tick, 1000);
