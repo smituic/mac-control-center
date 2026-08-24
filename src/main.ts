@@ -294,15 +294,73 @@ volBar.addEventListener("mousedown", (e) => {
 // ---- Calendar ----
 async function refreshCalendar() {
   const list = $("cal-list");
+  const now = new Date();
+
+  // date header
+  $("cal-date").textContent = now.toLocaleDateString([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
   const events = await invoke<CalEvent[]>("get_events");
+
   if (events.length === 0) {
-    list.innerHTML = `<div class="cal-empty">Nothing on today.</div>`;
+    list.innerHTML = `
+      <div class="cal-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        <div class="cal-empty-title">Nothing on today</div>
+        <div class="cal-empty-sub">Enjoy the open day.</div>
+      </div>`;
     return;
   }
-  list.innerHTML = events
-    .map((e) => {
-      const when = e.allDay ? "All day" : clock(e.start);
-      return `<div class="cal-item"><span class="cal-time">${when}</span><span class="cal-title">${esc(e.title)}</span></div>`;
+
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+
+  // classify each event relative to now
+  type Row = { ev: CalEvent; state: "now" | "upcoming" | "past" };
+  const rows: Row[] = events.map((ev) => {
+    if (ev.allDay) return { ev, state: "upcoming" as const };
+    const start = new Date(ev.start),
+      end = new Date(ev.end);
+    if (now >= start && now <= end) return { ev, state: "now" as const };
+    if (now > end) return { ev, state: "past" as const };
+    return { ev, state: "upcoming" as const };
+  });
+
+  // group order: Now, Upcoming, Earlier
+  const groups: { label: string; items: Row[] }[] = [
+    { label: "Now", items: rows.filter((r) => r.state === "now") },
+    { label: "Upcoming", items: rows.filter((r) => r.state === "upcoming") },
+    { label: "Earlier", items: rows.filter((r) => r.state === "past") },
+  ].filter((g) => g.items.length > 0);
+
+  list.innerHTML = groups
+    .map((g) => {
+      const items = g.items
+        .map(({ ev, state }) => {
+          const when = ev.allDay
+            ? "All day"
+            : `${fmt(ev.start)} – ${fmt(ev.end)}`;
+          const nowTag =
+            state === "now"
+              ? `<div class="cal-now-tag">Happening now</div>`
+              : "";
+          return `<div class="cal-item ${state}">
+        <div class="cal-accent"></div>
+        <div class="cal-body">
+          <div class="cal-title">${esc(ev.title)}</div>
+          <div class="cal-time">${when}</div>
+          ${nowTag}
+        </div>
+      </div>`;
+        })
+        .join("");
+      return `<div class="cal-group-label">${g.label}</div>${items}`;
     })
     .join("");
 }
