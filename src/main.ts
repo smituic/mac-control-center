@@ -292,24 +292,36 @@ volBar.addEventListener("mousedown", (e) => {
 });
 
 // ---- Calendar ----
+let selectedDate = new Date(); // which day the agenda is showing
+
+function ymd(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 async function refreshCalendar() {
   const list = $("cal-list");
   const now = new Date();
+  const isToday = ymd(selectedDate) === ymd(now);
 
-  // date header
-  $("cal-date").textContent = now.toLocaleDateString([], {
-    weekday: "long",
+  $("cal-day").textContent = isToday
+    ? "Today"
+    : selectedDate.toLocaleDateString([], { weekday: "long" });
+  $("cal-date").textContent = selectedDate.toLocaleDateString([], {
     month: "long",
     day: "numeric",
   });
+
   renderMonth();
-  const events = await invoke<CalEvent[]>("get_events");
+
+  const events = await invoke<CalEvent[]>("get_events", {
+    date: ymd(selectedDate),
+  });
 
   if (events.length === 0) {
     list.innerHTML = `
       <div class="cal-empty">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-        <div class="cal-empty-title">Nothing on today</div>
+        <div class="cal-empty-title">Nothing on ${isToday ? "today" : "this day"}</div>
         <div class="cal-empty-sub">Enjoy the open day.</div>
       </div>`;
     return;
@@ -320,11 +332,9 @@ async function refreshCalendar() {
       hour: "numeric",
       minute: "2-digit",
     });
-
-  // classify each event relative to now
   type Row = { ev: CalEvent; state: "now" | "upcoming" | "past" };
   const rows: Row[] = events.map((ev) => {
-    if (ev.allDay) return { ev, state: "upcoming" as const };
+    if (ev.allDay || !isToday) return { ev, state: "upcoming" as const };
     const start = new Date(ev.start),
       end = new Date(ev.end);
     if (now >= start && now <= end) return { ev, state: "now" as const };
@@ -332,10 +342,12 @@ async function refreshCalendar() {
     return { ev, state: "upcoming" as const };
   });
 
-  // group order: Now, Upcoming, Earlier
-  const groups: { label: string; items: Row[] }[] = [
+  const groups = [
     { label: "Now", items: rows.filter((r) => r.state === "now") },
-    { label: "Upcoming", items: rows.filter((r) => r.state === "upcoming") },
+    {
+      label: isToday ? "Upcoming" : "Scheduled",
+      items: rows.filter((r) => r.state === "upcoming"),
+    },
     { label: "Earlier", items: rows.filter((r) => r.state === "past") },
   ].filter((g) => g.items.length > 0);
 
@@ -350,14 +362,7 @@ async function refreshCalendar() {
             state === "now"
               ? `<div class="cal-now-tag">Happening now</div>`
               : "";
-          return `<div class="cal-item ${state}">
-        <div class="cal-accent"></div>
-        <div class="cal-body">
-          <div class="cal-title">${esc(ev.title)}</div>
-          <div class="cal-time">${when}</div>
-          ${nowTag}
-        </div>
-      </div>`;
+          return `<div class="cal-item ${state}"><div class="cal-accent"></div><div class="cal-body"><div class="cal-title">${esc(ev.title)}</div><div class="cal-time">${when}</div>${nowTag}</div></div>`;
         })
         .join("");
       return `<div class="cal-group-label">${g.label}</div>${items}`;
@@ -368,15 +373,13 @@ async function refreshCalendar() {
 function renderMonth() {
   const el = $("cal-month");
   const now = new Date();
-  const year = now.getFullYear(),
-    month = now.getMonth(),
-    today = now.getDate();
-  const monthName = now.toLocaleDateString([], {
+  const year = selectedDate.getFullYear(),
+    month = selectedDate.getMonth();
+  const monthName = selectedDate.toLocaleDateString([], {
     month: "long",
     year: "numeric",
   });
-
-  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
   const dows = ["S", "M", "T", "W", "T", "F", "S"];
@@ -384,15 +387,35 @@ function renderMonth() {
   for (let i = 0; i < firstDay; i++)
     cells += `<div class="cal-cell blank"></div>`;
   for (let d = 1; d <= daysInMonth; d++) {
-    const cls = d === today ? "cal-cell today" : "cal-cell";
-    cells += `<div class="${cls}">${d}</div>`;
+    const isToday =
+      d === now.getDate() &&
+      month === now.getMonth() &&
+      year === now.getFullYear();
+    const isSel = d === selectedDate.getDate();
+    let cls = "cal-cell";
+    if (isSel) cls += " sel";
+    if (isToday) cls += " today";
+    cells += `<div class="${cls}" data-day="${d}">${d}</div>`;
   }
-
   el.innerHTML =
     `<div class="cal-month-head"><div class="cal-month-title">${monthName}</div></div>` +
     `<div class="cal-grid">${cells}</div>`;
 }
 
+// click a day → switch the agenda to that day
+$("cal-month").addEventListener("click", (e) => {
+  const cell = (e.target as HTMLElement).closest<HTMLElement>(
+    ".cal-cell[data-day]",
+  );
+  if (!cell) return;
+  const day = Number(cell.dataset.day);
+  selectedDate = new Date(
+    selectedDate.getFullYear(),
+    selectedDate.getMonth(),
+    day,
+  );
+  refreshCalendar();
+});
 // ---- Kill button ----
 let armedPid: number | null = null;
 let armTimer: number | undefined;

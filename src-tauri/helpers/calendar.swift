@@ -24,9 +24,16 @@ if !granted {
     exit(0)
 }
 
-// Today's window: midnight to midnight.
+
 let cal = Calendar.current
-let startOfDay = cal.startOfDay(for: Date())
+var baseDate = Date()
+if CommandLine.arguments.count > 1 {
+    let f = DateFormatter()
+    f.dateFormat = "yyyy-MM-dd"
+    f.timeZone = TimeZone.current
+    if let parsed = f.date(from: CommandLine.arguments[1]) { baseDate = parsed }
+}
+let startOfDay = cal.startOfDay(for: baseDate)
 let endOfDay = cal.date(byAdding: .day, value: 1, to: startOfDay)!
 
 let predicate = store.predicateForEvents(withStart: startOfDay, end: endOfDay, calendars: nil)

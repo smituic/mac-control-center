@@ -174,12 +174,16 @@ struct CalEvent {
 }
 
 #[tauri::command]
-async fn get_events(app: tauri::AppHandle) -> Vec<CalEvent> {
+async fn get_events(app: tauri::AppHandle, date: Option<String>) -> Vec<CalEvent> {
     use tauri_plugin_shell::ShellExt;
-    let output = match app.shell().sidecar("calendar") {
-        Ok(cmd) => cmd.output().await,
+    let mut cmd = match app.shell().sidecar("calendar") {
+        Ok(c) => c,
         Err(_) => return vec![],
     };
+    if let Some(d) = date {
+        cmd = cmd.args([d]);
+    }
+    let output = cmd.output().await;
     let stdout = match output {
         Ok(o) => String::from_utf8_lossy(&o.stdout).to_string(),
         Err(_) => return vec![],
