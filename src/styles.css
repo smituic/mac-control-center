@@ -30,6 +30,8 @@ body {
     20,
     0.82
   ); /* tint now lives on the ROUNDED element */
+  position: relative;
+  width: 380px;
 }
 
 .rail {
@@ -42,6 +44,7 @@ body {
   align-items: center;
   gap: 6px;
   padding: 16px 0;
+  flex: 0 0 56px;
 }
 .rail-btn {
   width: 40px;
@@ -72,13 +75,15 @@ body {
 }
 
 .content {
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
+  min-width: 0;
 }
 .view {
   display: none;
   padding: 22px 18px;
+  width: 100%;
 }
 .view.active {
   display: block;
@@ -474,10 +479,14 @@ td:last-child {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  width: 100%;
+  align-items: stretch;
+  box-sizing: border-box;
 }
 .cal-head {
   margin-bottom: 16px;
   flex-shrink: 0;
+  align-self: stretch;
 }
 .cal-day {
   font-size: 22px;
@@ -494,15 +503,21 @@ td:last-child {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  align-self: auto; /* stop relying on stretch */
+  box-sizing: border-box;
 }
 .cal-month {
   flex-shrink: 0;
   margin-top: 16px;
   padding-top: 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
+  width: 100%;
+  align-self: stretch;
 }
 
 .cal-group-label {
@@ -677,7 +692,4 @@ td:last-child {
 .close-btn:hover {
   background: rgba(255, 80, 80, 0.25);
   color: #ff6b6b;
-}
-.app {
-  position: relative;
 }

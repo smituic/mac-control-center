@@ -42,33 +42,30 @@ static DOCK_LEFT: AtomicBool = AtomicBool::new(false);
 
 fn show_panel(window: &tauri::WebviewWindow) {
     if let Ok(Some(monitor)) = window.primary_monitor() {
-        let mpos = monitor.position();
-        let msize = monitor.size();
         let scale = monitor.scale_factor();
-        let menubar = (32.0 * scale) as i32;
-        let gap = (10.0 * scale) as i32;
-        let width = (380.0 * scale) as u32;
-        let height = (msize.height as i32 - menubar - gap).max(0) as u32;
-        let y = mpos.y + menubar;
+        // monitor size is physical → convert to logical points
+        let m_w = monitor.size().width as f64 / scale;
+        let m_h = monitor.size().height as f64 / scale;
+        let m_x = monitor.position().x as f64 / scale;
+        let m_y = monitor.position().y as f64 / scale;
+
+        let width = 380.0;      // logical points
+        let menubar = 32.0;
+        let gap = 10.0;
+        let height = (m_h - menubar - gap).max(0.0);
+        let y = m_y + menubar;
         let x = if DOCK_LEFT.load(Ordering::Relaxed) {
-            mpos.x + gap
+            m_x + gap
         } else {
-            mpos.x + msize.width as i32 - width as i32 - gap
+            m_x + m_w - width - gap
         };
-        // set size first, then position — and set size AGAIN after showing,
-        // to defeat the race where the window renders before it's sized
-        let _ = window.set_size(tauri::PhysicalSize { width, height });
-        let _ = window.set_position(tauri::PhysicalPosition { x, y });
-        let _ = window.show();
-        let _ = window.set_size(tauri::PhysicalSize { width, height });
-        let _ = window.set_position(tauri::PhysicalPosition { x, y });
-        let _ = window.set_focus();
-        return;
+
+        let _ = window.set_size(tauri::LogicalSize { width, height });
+        let _ = window.set_position(tauri::LogicalPosition { x, y });
     }
     let _ = window.show();
     let _ = window.set_focus();
 }
-
 fn run_osascript(script: &str) -> String {
     std::process::Command::new("osascript")
         .arg("-e").arg(script).output()

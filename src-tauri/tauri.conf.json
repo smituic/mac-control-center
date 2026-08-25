@@ -16,8 +16,10 @@
       {
         "label": "main",
         "title": "Mac Control Center",
-        "width": 360,
+        "width": 380,
         "height": 600,
+        "minWidth": 380,
+        "maxWidth": 380,
         "decorations": false,
         "alwaysOnTop": true,
         "visible": false,
