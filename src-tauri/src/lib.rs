@@ -55,8 +55,15 @@ fn show_panel(window: &tauri::WebviewWindow) {
         } else {
             mpos.x + msize.width as i32 - width as i32 - gap
         };
+        // set size first, then position — and set size AGAIN after showing,
+        // to defeat the race where the window renders before it's sized
         let _ = window.set_size(tauri::PhysicalSize { width, height });
         let _ = window.set_position(tauri::PhysicalPosition { x, y });
+        let _ = window.show();
+        let _ = window.set_size(tauri::PhysicalSize { width, height });
+        let _ = window.set_position(tauri::PhysicalPosition { x, y });
+        let _ = window.set_focus();
+        return;
     }
     let _ = window.show();
     let _ = window.set_focus();

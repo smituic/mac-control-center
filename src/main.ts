@@ -31,8 +31,6 @@ interface CalEvent {
   allDay: boolean;
 }
 
-const clock = (iso: string) =>
-  new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 const gb = (b: number) => (b / 1024 / 1024 / 1024).toFixed(1);
 const mb = (b: number) => (b / 1024 / 1024).toFixed(0);
 const esc = (s: string) =>
