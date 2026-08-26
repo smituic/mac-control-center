@@ -25,10 +25,10 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
   background: rgba(
-    18,
-    18,
     20,
-    0.82
+    20,
+    24,
+    0.55
   ); /* tint now lives on the ROUNDED element */
   position: relative;
   width: 380px;
@@ -37,7 +37,7 @@ body {
 .rail {
   width: 56px;
   flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.25);
+  background: transparent;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
