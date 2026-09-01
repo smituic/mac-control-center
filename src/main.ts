@@ -77,7 +77,10 @@ function setView(name: string) {
     .querySelectorAll<HTMLElement>(".rail-btn")
     .forEach((b) => b.classList.toggle("active", b.dataset.view === name));
   if (name === "spotify") refreshSpotify();
-  else if (name === "calendar") refreshCalendar();
+  else if (name === "calendar") {
+    selectedDate = new Date();
+    refreshCalendar();
+  }
 }
 document
   .querySelectorAll<HTMLElement>(".rail-btn")
